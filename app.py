@@ -4,26 +4,14 @@ import pandas as pd
 import numpy as np
 import joblib
 from datetime import datetime, timedelta
-import holidays
 from scipy.interpolate import interp1d
-from geopy.geocoders import Nominatim
-from geopy.distance import geodesic
 from sklearn.preprocessing import LabelEncoder
+import re
 
 app = Flask(__name__)
 
 # Cargar el modelo
 model = joblib.load('flight_price_model.pkl')
-
-# Cargar datos de combustible (necesarios para la predicción)
-df_fuel = pd.read_csv("data/fuel_prices_daily.csv")
-df_fuel["Date"] = pd.to_datetime(df_fuel["Date"])
-df_fuel = df_fuel.sort_values("Date")
-df_fuel["Date_int"] = (df_fuel["Date"] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1D')
-interp_func = interp1d(df_fuel["Date_int"], df_fuel["Fuel_Price"], kind="linear", fill_value="extrapolate")
-
-# Inicializar geolocator
-geolocator = Nominatim(user_agent="flight-price-predictor")
 
 # Definir las posibles ciudades de origen y destino (extraído de tu CSV)
 POSSIBLE_SOURCES = ['Banglore', 'Kolkata', 'Delhi', 'Chennai', 'Mumbai']
@@ -35,49 +23,19 @@ le_destination = LabelEncoder()
 le_source.fit(POSSIBLE_SOURCES)  # Fit con las fuentes reales
 le_destination.fit(POSSIBLE_DESTINATIONS) # Fit con los destinos reales
 
-# Funciones auxiliares (adaptadas del preprocesamiento)
+# Cargar datos de combustible (necesarios para la predicción)
+df_fuel = pd.read_csv("data/fuel_prices_daily.csv")
+df_fuel["Date"] = pd.to_datetime(df_fuel["Date"])
+df_fuel = df_fuel.sort_values("Date")
+df_fuel["Date_int"] = (df_fuel["Date"] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1D')
+interp_func = interp1d(df_fuel["Date_int"], df_fuel["Fuel_Price"], kind="linear", fill_value="extrapolate")
 
-def get_coordinates(city_name):
-    location = geolocator.geocode(city_name)
-    if location:
-        return (location.latitude, location.longitude)
-    else:
-        return None
-
-def calculate_flight_distance(origin_coords, destination_coords):
-    if origin_coords and destination_coords:
-        return geodesic(origin_coords, destination_coords).km
-    else:
-        return None
-
-def is_holiday(date):
-    country = "IN"
-    indian_holidays = holidays.country_holidays(country)
-    return 1 if date in indian_holidays else 0
-
-def days_to_holiday(date):
-    country = "IN"
-    indian_holidays = holidays.country_holidays(country)
-    return min([abs((date.date() - h).days) for h in indian_holidays.keys()] + [365])
-
+# Funciones auxiliares
 def prepare_features(source, destination, journey_date):
     """Prepara las características para la predicción."""
 
-    # Obtener coordenadas
-    origin_coords = get_coordinates(source)
-    destination_coords = get_coordinates(destination)
-
-    # Calcular distancia
-    flight_distance = calculate_flight_distance(origin_coords, destination_coords)
-
     # Obtener precio del combustible
     fuel_price = interp_func((journey_date - pd.Timestamp("1970-01-01")) // pd.Timedelta('1D'))
-
-    # Verificar si es día festivo
-    is_holiday_flag = is_holiday(journey_date)
-
-    # Calcular días hasta el próximo día festivo
-    days_until_holiday = days_to_holiday(journey_date)
 
     # Codificar origen y destino
     source_encoded = le_source.transform([source])[0]
@@ -88,12 +46,12 @@ def prepare_features(source, destination, journey_date):
         'Source_Encoded': source_encoded,
         'Destination_Encoded': destination_encoded,
         'Journey_Month': journey_date.month,
-        'Journey_Week': int(journey_date.strftime("%W")), # Journey_Week
+        'Journey_Week': int(journey_date.strftime("%W")),
         'Journey_Weekday': journey_date.weekday(),
-        'Flight_Distance': flight_distance,
-        'Fuel_Price': fuel_price,
-        'Is_Holiday': is_holiday_flag,
-        'Days_To_Holiday': days_until_holiday,
+        'Flight_Duration_Minutes': 120, #Placeholder, ya que ahora todos los vuelos tienen la misma duración
+        'Fuel_Price': float(fuel_price),
+        'Is_Holiday': 0, # Placeholder, ya que no podemos predecir festivos
+        'Days_To_Holiday': 10 #Placeholder, siempre es el mismo valor, da cero, no sirve este valor
     }
     return features
 
@@ -114,13 +72,18 @@ def index():
             input_df = pd.DataFrame([features])
 
             # Asegurarse de que las columnas estén en el mismo orden que durante el entrenamiento
-            feature_order = ['Source_Encoded', 'Destination_Encoded', 'Journey_Month', 'Journey_Week', 'Journey_Weekday', 'Flight_Distance', 'Fuel_Price', 'Is_Holiday', 'Days_To_Holiday']
+            feature_order = ['Source_Encoded', 'Destination_Encoded', 'Journey_Month', 'Journey_Week', 'Journey_Weekday', 'Flight_Duration_Minutes', 'Fuel_Price', 'Is_Holiday', 'Days_To_Holiday']
             input_df = input_df[feature_order]
+            # Convertir a tipo float
+            input_df = input_df.astype(float) #Cassteo a Float
+            if 'Price' not in input_df.columns:  # Verificar si la columna 'Price' ya existe
+                input_df['Price'] = 0  # Agregar la columna 'Price' con valores iniciales de 0
 
-            # Manejar valores nulos (imputar con la media, por ejemplo)
-            input_df = input_df.fillna(input_df.mean())
+            # Ahora, asegúrate de que las columnas estén en el mismo orden que durante el entrenamiento y convertir a numpy array
+            feature_order = ['Source_Encoded', 'Destination_Encoded', 'Journey_Month', 'Journey_Week', 'Journey_Weekday', 'Flight_Duration_Minutes', 'Fuel_Price', 'Is_Holiday', 'Days_To_Holiday','Price']
+            input_df = input_df[feature_order]
+            prediction = model.predict(input_df.values)[0]
 
-            prediction = model.predict(input_df)[0]
             predictions.append({'date': current_date.strftime('%Y-%m-%d'), 'price': round(prediction, 2)})
 
     return render_template('index.html', predictions=predictions,

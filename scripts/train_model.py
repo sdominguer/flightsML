@@ -102,11 +102,17 @@ df["Days_To_Holiday"] = df["Date_of_Journey"].apply(
 )
 
 # Seleccionar las variables relevantes para el modelo
-features = ['Source_Encoded', 'Destination_Encoded', 'Journey_Month', 'Journey_Week', 'Journey_Weekday', 'Flight_Duration_Minutes', 'Fuel_Price', 'Is_Holiday', 'Days_To_Holiday']
+features = ['Source_Encoded', 'Destination_Encoded', 'Journey_Month', 'Journey_Week', 'Journey_Weekday', 'Flight_Duration_Minutes', 'Fuel_Price', 'Is_Holiday', 'Days_To_Holiday', 'Price']
 
 X = df[features]
-y = df['Price']
 
+# Imprimir la matriz de correlación
+plt.figure(figsize=(12, 10))
+sns.heatmap(X.corr(), annot=True, cmap='coolwarm')
+plt.title('Matriz de Correlación entre Características')
+plt.show()
+
+y = df['Price']
 
 # Dividir los datos en conjuntos de entrenamiento y prueba
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -144,3 +150,6 @@ print(f"RMSE: {rmse:.2f}")
 # Guardar el modelo entrenado
 joblib.dump(xgb_model, 'flight_price_model.pkl')
 print("✅ Modelo guardado como 'flight_price_model.pkl'")
+
+np.save('le_source_classes.npy', le_source.classes_)
+np.save('le_destination_classes.npy', le_destination.classes_)
