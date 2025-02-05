@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flight Price Predictor</title>
+</head>
+<body>
+    <h1>Flight Price Prediction</h1>
+    <form method="POST">
+        <label for="source">Source:</label><br>
+        <select id="source" name="source">
+            {% for source in possible_sources %}
+                <option value="{{ source }}">{{ source }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label for="destination">Destination:</label><br>
+        <select id="destination" name="destination">
+            {% for destination in possible_destinations %}
+                <option value="{{ destination }}">{{ destination }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label for="date">Date (YYYY-MM-DD):</label><br>
+        <input type="date" id="date" name="date"><br><br>
+
+        <input type="submit" value="Predict Prices">
+    </form>
+
+    {% if predictions %}
+    <h2>Predicted Prices (30 days before):</h2>
+    <ul>
+        {% for p in predictions %}
+        <li>{{ p.date }}: ${{ p.price }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</body>
+</html>
