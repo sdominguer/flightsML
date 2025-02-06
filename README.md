@@ -38,7 +38,6 @@ The application relies on the following data sources:
 
 ```bash
 git clone [ [repository URL]](https://github.com/sdominguer/flightsML)
-cd flight_price_predictor
 ```
 
 2.  **Create a Virtual Environment (Recommended):**
@@ -59,7 +58,10 @@ pip install -r requirements.txt
 The project's folder structure should look like the following
 
 ```
-flight_price_predictor/
+├── scripts
+│   └── preprocess.py
+│   └── train_model.py
+│   └── predict_price.py
 ├── app.py          # Aplicación Flask
 ├── flight_price_model.pkl  # Modelo entrenado
 ├── data/
@@ -118,21 +120,6 @@ The data preprocessing and model training are performed in the `train_model.py` 
 6.  **Model Training:** Train the XGBoost model using the training data and a predefined set of hyperparameters.
 7.  **Model Evaluation:** Evaluate the model using Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) on the testing data.
 8.  **Model Persistence:** Save the trained model as a .pkl file for later use in the Flask application.
-
-## Folder structure
-
-The project's folder structure should look like the following
-
-```
-flight_price_predictor/
-├── app.py          # Aplicación Flask
-├── flight_price_model.pkl  # Modelo entrenado
-├── data/
-│   └── fuel_prices_daily.csv
-├── templates/
-│   └── index.html  # Formulario HTML
-└── requirements.txt # dependencias
-```
 
 ## Disclaimer
 
