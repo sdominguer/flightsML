@@ -1,4 +1,4 @@
-```markdown
+
 # Flight Price Prediction App
 
 This project is a Flask-based web application designed to predict flight prices. It takes a flight origin, destination, and date as input and provides price predictions for the 30 days leading up to the specified date.
