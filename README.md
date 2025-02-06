@@ -37,7 +37,7 @@ The application relies on the following data sources:
 1.  **Clone the Repository:**
 
 ```bash
-git clone [repository URL]
+git clone [ [repository URL]](https://github.com/sdominguer/flightsML)
 cd flight_price_predictor
 ```
 
